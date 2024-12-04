@@ -1,0 +1,22 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/munyaantony/Desktop/Proj2Mod/install/inverse_kinematics/lib/python3.10/site-packages",
+        "/home/munyaantony/Desktop/Proj2Mod/install/inverse_kinematics_interfaces/local/lib/python3.10/dist-packages",
+        "/home/munyaantony/Desktop/SID/project_updated/project/install/bot_waypoint_msgs/local/lib/python3.10/dist-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/teleop_interface/lib/python3.10/site-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/simple_controller/lib/python3.10/site-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/cyber_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/munyaantony/Desktop/Proj2Mod/install/inverse_kinematics/lib/python3.10/site-packages",
+        "/home/munyaantony/Desktop/Proj2Mod/install/inverse_kinematics_interfaces/local/lib/python3.10/dist-packages",
+        "/home/munyaantony/Desktop/SID/project_updated/project/install/bot_waypoint_msgs/local/lib/python3.10/dist-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/teleop_interface/lib/python3.10/site-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/simple_controller/lib/python3.10/site-packages",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/cyber_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}

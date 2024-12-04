@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/munyaantony/Desktop/Proj2Mod/install/inverse_kinematics_interfaces/include/**",
+        "/home/munyaantony/Desktop/SID/project_updated/project/install/group8_rwa5/include/**",
+        "/home/munyaantony/Desktop/SID/project_updated/project/install/bot_waypoint_msgs/include/**",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/cyber_truck_trailer/include/**",
+        "/home/munyaantony/enpm662_cpp_ws/ros2_ws_project1/install/cyber_interfaces/include/**",
+        "/opt/ros/humble/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
