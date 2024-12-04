@@ -5,7 +5,7 @@ import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.node import Node
 from std_msgs.msg import Int32
-from inverse_kinematics_interfaces.action import Fibonacci
+from inverse_kinematics_interfaces.action import Posegoal
 
 
 class InverseKinematics(Node):
@@ -39,8 +39,8 @@ class InverseKinematics(Node):
         # action server for handling action goal requests
         self.action_server = ActionServer(
             self,
-            Fibonacci,
-            "~/action",
+            Posegoal,
+            "/goal",
             execute_callback=self.actionExecute,
             goal_callback=self.actionHandleGoal,
             cancel_callback=self.actionHandleCancel,
@@ -56,7 +56,24 @@ class InverseKinematics(Node):
 
         self.get_logger().info(f"Message received: '{msg.data}'")
 
-    def actionHandleGoal(self, goal: Fibonacci.Goal) -> GoalResponse:
+    def workspaceSanityCheck(self, goalPose):
+
+        #  goal Pose is of type geometry_msgs/Pose
+        #     geometry_msgs/Pose pose
+        # Point position
+        # 	float64 x
+        # 	float64 y
+        # 	float64 z
+        # Quaternion orientation
+        # 	float64 x 0
+        # 	float64 y 0
+        # 	float64 z 0
+        # 	float64 w 1
+        # TODO Antony
+
+        return True
+
+    def actionHandleGoal(self, goal: Posegoal.Goal) -> GoalResponse:
         """Processes action goal requests
 
         Args:
@@ -70,7 +87,7 @@ class InverseKinematics(Node):
 
         return GoalResponse.ACCEPT
 
-    def actionHandleCancel(self, goal: Fibonacci.Goal) -> CancelResponse:
+    def actionHandleCancel(self, goal: Posegoal.Goal) -> CancelResponse:
         """Processes action cancel requests
 
         Args:
@@ -84,7 +101,7 @@ class InverseKinematics(Node):
 
         return CancelResponse.ACCEPT
 
-    def actionHandleAccepted(self, goal: Fibonacci.Goal):
+    def actionHandleAccepted(self, goal: Posegoal.Goal):
         """Processes accepted action goal requests
 
         Args:
@@ -94,7 +111,7 @@ class InverseKinematics(Node):
         # execute action in a separate thread to avoid blocking
         goal.execute()
 
-    async def actionExecute(self, goal: Fibonacci.Goal) -> Fibonacci.Result:
+    async def actionExecute(self, goal: Posegoal.Goal) -> Posegoal.Result:
         """Executes an action
 
         Args:
@@ -110,8 +127,8 @@ class InverseKinematics(Node):
         loop_rate = 1
 
         # create the action feedback and result
-        feedback = Fibonacci.Feedback()
-        result = Fibonacci.Result()
+        feedback = Posegoal.Feedback()
+        result = Posegoal.Result()
 
         # initialize the Fibonacci sequence
         feedback.partial_sequence = [0, 1]
@@ -127,7 +144,7 @@ class InverseKinematics(Node):
                 return result
 
             # compute the next Fibonacci number
-            feedback.partial_sequence.append(feedback.partial_sequence[i] + feedback.partial_sequence[i-1])
+            feedback.partial_sequence.append(feedback.partial_sequence[i] + feedback.partial_sequence[i - 1])
 
             # publish the current sequence as action feedback
             goal.publish_feedback(feedback)
@@ -146,7 +163,6 @@ class InverseKinematics(Node):
 
 
 def main():
-
     rclpy.init()
     node = InverseKinematics()
     try:
