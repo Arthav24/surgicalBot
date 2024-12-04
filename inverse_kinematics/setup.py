@@ -24,6 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts':
-        ['inverse_kinematics = inverse_kinematics.inverse_kinematics:main'],
+            ['inverse_kinematics = inverse_kinematics.inverse_kinematics:main',
+             'dum = inverse_kinematics.dummy_pub:main'],
     },
 )
