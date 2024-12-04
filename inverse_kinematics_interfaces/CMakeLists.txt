@@ -7,6 +7,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   action/Posegoal.action
+  msg/JointAngles.msg
   DEPENDENCIES geometry_msgs
 )
 
