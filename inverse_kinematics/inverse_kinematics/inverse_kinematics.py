@@ -13,6 +13,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import ExternalShutdownException
 from rclpy.executors import MultiThreadedExecutor
 import math
+from multiprocessing import Pool
 
 
 class UB100:
@@ -56,9 +57,12 @@ class UB100:
         ]
     )
 
-    dt = 0.2
-    total_time = 1
-    steps = int(total_time / dt)
+    dist = sp.symbols("dist")
+    steps = 20
+
+    # total_time = dist/0.15
+    dt = dist / (0.15 * steps)
+    dt_calculated = 0
 
     def get_dh_transformations(self, theta, i):
         return sp.Matrix(
@@ -80,21 +84,35 @@ class UB100:
             ]
         )
 
+    def compute_derivative(self, args):
+        jacobian_, theta_i = args
+        return sp.diff(jacobian_, theta_i)
+
     def get_inverse_jacobian(self, joint_angles):
         # Define the Jacobian matrix symbolically (your actual Jacobian expressions)
         jacobian_ = sp.expand(self.T_0_6[0:3, 3])
+
+        #  All independent steps can parallelize
         Z1 = self.T_0_1[0:3, 2]
         Z2 = self.T_0_2[0:3, 2]
         Z3 = self.T_0_3[0:3, 2]
         Z4 = self.T_0_4[0:3, 2]
         Z5 = self.T_0_5[0:3, 2]
         Z6 = self.T_0_6[0:3, 2]
-        p1 = sp.diff(jacobian_, self.theta[0])
-        p2 = sp.diff(jacobian_, self.theta[1])
-        p3 = sp.diff(jacobian_, self.theta[2])
-        p4 = sp.diff(jacobian_, self.theta[3])
-        p5 = sp.diff(jacobian_, self.theta[4])
-        p6 = sp.diff(jacobian_, self.theta[5])
+        # p1 = sp.diff(jacobian_, self.theta[0])
+        # p2 = sp.diff(jacobian_, self.theta[1])
+        # p3 = sp.diff(jacobian_, self.theta[2])
+        # p4 = sp.diff(jacobian_, self.theta[3])
+        # p5 = sp.diff(jacobian_, self.theta[4])
+        # p6 = sp.diff(jacobian_, self.theta[5])
+
+        args_list = [(jacobian_, theta_i) for theta_i in self.theta]
+
+        with Pool() as pool:
+            results = pool.map(self.compute_derivative, args_list)
+
+        # Unpack results into individual variables (if needed)
+        p1, p2, p3, p4, p5, p6 = results
 
         ## Obtaining Jacobian Matrix J
 
@@ -123,6 +141,7 @@ class UB100:
         return P_X_Y_Z_0
 
     def __init__(self):
+        #  TODO parallelize this
         T_0_1 = self.get_dh_transformations(self.theta[0] + sp.pi / 2, 0)
         T_1_2 = self.get_dh_transformations(self.theta[1] + sp.pi / 2, 1)
         T_2_3 = self.get_dh_transformations(self.theta[2], 2)
@@ -130,6 +149,7 @@ class UB100:
         T_4_5 = self.get_dh_transformations(self.theta[4] + sp.pi, 4)
         T_5_6 = self.get_dh_transformations(self.theta[5] + sp.pi, 5)
 
+        #  TODO parallelize this
         self.T_0_1 = T_0_1
         self.T_0_2 = T_0_1 * T_1_2
         self.T_0_3 = T_0_1 * T_1_2 * T_2_3
@@ -140,20 +160,42 @@ class UB100:
         self.P_X_Y_Z_0 = self.T_0_6[:-1, -1]
 
     # This function generates straight line trajectory in 3D space. There could be some cases where trajectory passes through the robot which should be handled somehow
-    def generate_trajectory(self, point_a: Pose, point_b: Pose):
-        time = np.arange(0, self.total_time, self.dt)
+    def generate_trajectory(self, point_a, point_b: Pose):
+
+        rot = self.quaternion_rotation_matrix(point_a.orientation)
+        rot = np.vstack((rot, np.array([0,0,0])))
+
+        T_0_E = np.hstack((rot, np.array([[point_a.position.x],[point_a.position.y],[point_a.position.z], [1]])))
+
+        distance = math.sqrt(
+            (point_a.position.x - point_b.pose.position.x) ** 2 +
+            (point_a.position.y - point_b.pose.position.y) ** 2 +
+            (point_a.position.z - point_b.pose.position.z) ** 2
+        )
+
+        self.dt_calculated = self.dt.subs({self.dist: distance})
+        total_time = self.dt_calculated * 20
+        time = np.arange(0, total_time, self.dt_calculated)
+
         points = []
         # TODO
         for t in time:
-            x = 0.0
-            y = 0.0
-            z = -0.17391 * t / self.total_time
+            # x-x1/x2-x1 = y-y1/y2-y1 = z-z1/z2-z1
+            x = point_a.position.x + point_b.pose.position.x * t / total_time
+            y = point_a.position.y + point_b.pose.position.y * t / total_time
+            z = point_a.position.z + point_b.pose.position.z * t / total_time
+
             local_xy = np.array([x, y, z, 1.0])
-            points.append(np.dot(self.T_0_E, local_xy))
+
+            points.append(np.dot(T_0_E, local_xy))
+
+        #     for now assuming directly going to desired point no intermediate pts
+        # points.append(np.array([point_a.position.x, point_a.position.y, point_a.position.z, 1.0]))
+        # points.append(np.array([point_b.pose.position.x, point_b.pose.position.y, point_b.pose.position.z, 1.0]))
         return np.vstack(points)
 
     # This functions generates joint angles to be published
-    def get_trajectory_ik(self, current_EE_pose, desired_EE_pose):
+    def get_trajectory_ik(self, current_EE_pose: Pose, desired_EE_pose: Pose):
         joint_angles = []
         traj = self.generate_trajectory(current_EE_pose, desired_EE_pose)
         #         find current joint angles either by doing ik of current pose or save last joint angles.
@@ -162,9 +204,9 @@ class UB100:
         for i in range(traj.shape[0]):
             if i > 0:
                 x_dot, y_dot, z_dot = (
-                    (traj[i, 0] - traj[i - 1, 0]) / self.dt,
-                    (traj[i, 1] - traj[i - 1, 1]) / self.dt,
-                    (traj[i, 2] - traj[i - 1, 2]) / self.dt,
+                    (traj[i, 0] - traj[i - 1, 0]) / self.dt_calculated,
+                    (traj[i, 1] - traj[i - 1, 1]) / self.dt_calculated,
+                    (traj[i, 2] - traj[i - 1, 2]) / self.dt_calculated,
                 )
             else:
                 x_dot, y_dot, z_dot = 0.0, 0.0, 0.0
@@ -173,13 +215,54 @@ class UB100:
                 new_end_effector_velocities, joint_angles_current
             )
 
+            joint_angles_current = joint_angles_current + joint_angular_velocities * self.dt_calculated
             joint_angles.append(joint_angles_current)
-            joint_angles_current = joint_angles_current + joint_angular_velocities * self.dt
 
         self.LAST_ANGLES = joint_angles[-1]
 
+        # reset dt_calculated
+        self.dt_calculated = 0.0
         return joint_angles
 
+    def quaternion_rotation_matrix(self,Q):
+        """
+        Covert a quaternion into a full three-dimensional rotation matrix.
+
+        Input
+        :param Q: A 4 element array representing the quaternion (q0,q1,q2,q3)
+
+        Output
+        :return: A 3x3 element matrix representing the full 3D rotation matrix.
+                 This rotation matrix converts a point in the local reference
+                 frame to a point in the global reference frame.
+        """
+        # Extract the values from Q
+        q0 = Q.w
+        q1 = Q.x
+        q2 = Q.y
+        q3 = Q.z
+
+        # First row of the rotation matrix
+        r00 = 2 * (q0 * q0 + q1 * q1) - 1
+        r01 = 2 * (q1 * q2 - q0 * q3)
+        r02 = 2 * (q1 * q3 + q0 * q2)
+
+        # Second row of the rotation matrix
+        r10 = 2 * (q1 * q2 + q0 * q3)
+        r11 = 2 * (q0 * q0 + q2 * q2) - 1
+        r12 = 2 * (q2 * q3 - q0 * q1)
+
+        # Third row of the rotation matrix
+        r20 = 2 * (q1 * q3 - q0 * q2)
+        r21 = 2 * (q2 * q3 + q0 * q1)
+        r22 = 2 * (q0 * q0 + q3 * q3) - 1
+
+        # 3x3 rotation matrix
+        rot_matrix = np.array([[r00, r01, r02],
+                               [r10, r11, r12],
+                               [r20, r21, r22]])
+
+        return rot_matrix
 
 class InverseKinematics(Node):
 
@@ -193,7 +276,7 @@ class InverseKinematics(Node):
         self.robot = UB100()
         self.setup()
         self.server_busy = False
-        self.precision_tolerance = 0.2
+        self.precision_tolerance = 0.02
 
     def setup(self):
         """Sets up subscribers, publishers, etc. to configure the node"""
@@ -313,7 +396,7 @@ class InverseKinematics(Node):
         # wait for current position to be equal to
 
         self.get_logger().info("Executing action goal")
-        angles = self.robot.get_trajectory_ik(self.currentPose, goal)
+        angles = self.robot.get_trajectory_ik(self.currentPose, goal.request)
 
         for a in angles:
             #  pick one angle , publish it and wait for robot EE to reach that position, publish another and repeat
@@ -325,14 +408,15 @@ class InverseKinematics(Node):
             approx_EE_fk = self.robot.get_end_effector_positions_fk(
                 [float(a[0]), float(a[1]), float(a[2]), float(a[3]), float(a[4]), float(a[5])])
 
-            # TODO imporve this
+            # TODO improve this
             while not self.is_pose_near_point(self.currentPose, approx_EE_fk, self.precision_tolerance):
-                self.get_logger().info("Waiting for robot to reach %s %s %s" % (approx_EE_fk[0], approx_EE_fk[1], approx_EE_fk[2]))
+                self.get_logger().info(
+                    "Waiting for robot to reach %s %s %s" % (approx_EE_fk[0], approx_EE_fk[1], approx_EE_fk[2]))
                 time.sleep(1)
 
-            self.get_logger().info("Robot reached EE pose %s %s desired pose was %s %s %s %s" % (self.currentPose.position.x, self.currentPose.position.y,
-                                   self.currentPose.position.z, approx_EE_fk[0], approx_EE_fk[1], approx_EE_fk[2]))
-
+            self.get_logger().info("Robot reached EE pose x=%s y=%s z=%s desired pose x=%s y=%s z=%s" % (
+                self.currentPose.position.x, self.currentPose.position.y,
+                self.currentPose.position.z, approx_EE_fk[0], approx_EE_fk[1], approx_EE_fk[2]))
 
         # finish by publishing the action result
         # finish when EE is in vicinity of past goal index
@@ -357,13 +441,12 @@ class InverseKinematics(Node):
         Returns:
             bool: True if the pose is near the point, False otherwise.
         """
-
         distance = math.sqrt(
             (pose.position.x - point[0]) ** 2 +
             (pose.position.y - point[1]) ** 2 +
             (pose.position.z - point[2]) ** 2
         )
-
+        print("distance ", distance)
         return distance <= tolerance
 
 
