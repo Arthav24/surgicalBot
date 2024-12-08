@@ -14,6 +14,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.executors import MultiThreadedExecutor
 import math
 from multiprocessing import Pool
+import matplotlib.pyplot as plt
 
 
 class UB100:
@@ -141,15 +142,14 @@ class UB100:
         return P_X_Y_Z_0
 
     def __init__(self):
-        #  TODO parallelize this
+        #  No need to parallelize as its executed only once at startup
         T_0_1 = self.get_dh_transformations(self.theta[0] + sp.pi / 2, 0)
         T_1_2 = self.get_dh_transformations(self.theta[1] + sp.pi / 2, 1)
         T_2_3 = self.get_dh_transformations(self.theta[2], 2)
         T_3_4 = self.get_dh_transformations(self.theta[3] + sp.pi / 2, 3)
         T_4_5 = self.get_dh_transformations(self.theta[4] + sp.pi, 4)
         T_5_6 = self.get_dh_transformations(self.theta[5] + sp.pi, 5)
-
-        #  TODO parallelize this
+        #  No need to parallelize as its executed only once at startup
         self.T_0_1 = T_0_1
         self.T_0_2 = T_0_1 * T_1_2
         self.T_0_3 = T_0_1 * T_1_2 * T_2_3
@@ -161,11 +161,21 @@ class UB100:
 
     # This function generates straight line trajectory in 3D space. There could be some cases where trajectory passes through the robot which should be handled somehow
     def generate_trajectory(self, point_a, point_b: Pose):
+        fig = plt.figure(1, (12, 8))
+        subplot = fig.add_subplot(2, 2, 1,projection='3d')
+        fig.suptitle("Trajectory and Kinematic Analysis of UR3 Robot", fontsize=16)
+        plt.ion()
+        subplot.set_xlabel("X")
+        subplot.set_ylabel("Y")
+        subplot.set_zlabel("Z")
+        subplot.set_title("3D trajectory of Robot end-effector")
+        subplot.grid(True)
+
 
         rot = self.quaternion_rotation_matrix(point_a.orientation)
-        rot = np.vstack((rot, np.array([0,0,0])))
+        rot = np.vstack((rot, np.array([0, 0, 0])))
 
-        T_0_E = np.hstack((rot, np.array([[point_a.position.x],[point_a.position.y],[point_a.position.z], [1]])))
+        T_0_E = np.hstack((rot, np.array([[point_a.position.x], [point_a.position.y], [point_a.position.z], [1]])))
 
         distance = math.sqrt(
             (point_a.position.x - point_b.pose.position.x) ** 2 +
@@ -178,9 +188,8 @@ class UB100:
         time = np.arange(0, total_time, self.dt_calculated)
 
         points = []
-        # TODO
+        # TODO verify traj generation
         for t in time:
-            # x-x1/x2-x1 = y-y1/y2-y1 = z-z1/z2-z1
             x = point_a.position.x + point_b.pose.position.x * t / total_time
             y = point_a.position.y + point_b.pose.position.y * t / total_time
             z = point_a.position.z + point_b.pose.position.z * t / total_time
@@ -189,9 +198,12 @@ class UB100:
 
             points.append(np.dot(T_0_E, local_xy))
 
-        #     for now assuming directly going to desired point no intermediate pts
         # points.append(np.array([point_a.position.x, point_a.position.y, point_a.position.z, 1.0]))
         # points.append(np.array([point_b.pose.position.x, point_b.pose.position.y, point_b.pose.position.z, 1.0]))
+        for pen in points:
+            subplot.scatter(pen[0],pen[1], pen[2], color="blue")
+
+        plt.show()
         return np.vstack(points)
 
     # This functions generates joint angles to be published
@@ -224,7 +236,7 @@ class UB100:
         self.dt_calculated = 0.0
         return joint_angles
 
-    def quaternion_rotation_matrix(self,Q):
+    def quaternion_rotation_matrix(self, Q):
         """
         Covert a quaternion into a full three-dimensional rotation matrix.
 
@@ -264,6 +276,7 @@ class UB100:
 
         return rot_matrix
 
+
 class InverseKinematics(Node):
 
     def __init__(self):
@@ -276,6 +289,7 @@ class InverseKinematics(Node):
         self.robot = UB100()
         self.setup()
         self.server_busy = False
+        self.cancel_request = False
         self.precision_tolerance = 0.02
 
     def setup(self):
@@ -315,21 +329,23 @@ class InverseKinematics(Node):
         self.currentPose = msg
         self.get_logger().info(f"Message received: '{msg.position.x}' '{msg.position.y}' '{msg.position.z}'")
 
-    def workspaceSanityCheck(self, goalPose):
+    def workspaceSanityCheck(self, goalPose: Posegoal.Goal):
+        self.get_logger().info(
+            f"Checking point: x={goalPose.pose.position.x}, y={goalPose.pose.position.y}, z={goalPose.pose.position.z}")
 
-        #  goal Pose is of type geometry_msgs/Pose
-        #     geometry_msgs/Pose pose
-        # Point position
-        # 	float64 x
-        # 	float64 y
-        # 	float64 z
-        # Quaternion orientation
-        # 	float64 x 0
-        # 	float64 y 0
-        # 	float64 z 0
-        # 	float64 w 1
-        # TODO Antony
+        # Calculate distance to the point
+        point_position = np.array([goalPose.pose.position.x, goalPose.pose.position.y, goalPose.pose.position.z])
+        max_reach = 0.6
+        distance_to_point = np.linalg.norm(point_position)
 
+        self.get_logger().info(f"Distance to point: {distance_to_point}, Max reach: {max_reach}")
+
+        # Check if the distance is within the manipulator's reach
+        if distance_to_point > max_reach:
+            self.get_logger().warn("Point is outside the reachable workspace.")
+            return False
+
+        self.get_logger().info("Point is within the reachable workspace.")
         return True
 
     def actionHandleGoal(self, goal: Posegoal.Goal) -> GoalResponse:
@@ -345,10 +361,10 @@ class InverseKinematics(Node):
         self.get_logger().info("Received action goal request")
         # Check if robot is in action or one action is already running and sanity check
 
-        if (self.server_busy):
-            self.get_logger().error("Server busy");
+        if self.server_busy:
+            self.get_logger().error("Server busy")
             return GoalResponse.REJECT
-        elif (self.workspaceSanityCheck(goal)):
+        elif self.workspaceSanityCheck(goal):
             return GoalResponse.ACCEPT
         else:
             return GoalResponse.REJECT
@@ -364,6 +380,7 @@ class InverseKinematics(Node):
             CancelResponse: cancel response
         """
         self.server_busy = False
+        self.cancel_request = True
         self.get_logger().warn("Received request to cancel action goal")
 
         return CancelResponse.ACCEPT
@@ -412,6 +429,17 @@ class InverseKinematics(Node):
             while not self.is_pose_near_point(self.currentPose, approx_EE_fk, self.precision_tolerance):
                 self.get_logger().info(
                     "Waiting for robot to reach %s %s %s" % (approx_EE_fk[0], approx_EE_fk[1], approx_EE_fk[2]))
+                # checking if cancel request is generated
+                if self.cancel_request:
+                    self.get_logger().warn("Cancel request , Stopping arm")
+                    result.success = True
+                    # feedback.next_joint_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                    goal.succeed()
+                    self.server_busy = False
+                    self.cancel_request = False
+                    self.get_logger().info("Goal Halted")
+                    return result
+
                 time.sleep(1)
 
             self.get_logger().info("Robot reached EE pose x=%s y=%s z=%s desired pose x=%s y=%s z=%s" % (
