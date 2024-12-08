@@ -35,6 +35,9 @@
             name="ignition::gazebo::systems::Sensors">
             <render_engine>ogre</render_engine>
         </plugin>
+        <plugin name="end_effector_plugin" filename="lib/libEndEffectorPositionPlugin.so">
+            <robot_namespace>/surgicalBot</robot_namespace>
+        </plugin>
 
         <!-- World Lighting -->
         <light type="directional" name="sun">
