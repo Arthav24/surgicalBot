@@ -13,13 +13,13 @@ def generate_launch_description():
     # Launch Ignition Gazebo with the specified world
     ign_gazebo_world = ExecuteProcess(
         cmd=[
-            'ignition', 'gazebo',
+            'ign', 'gazebo',  # Change this line
             PathJoinSubstitution([
                 FindPackageShare('surgical_tools_sorter'),
                 'worlds',
                 'tool_sorter_world.sdf'
             ]),
-            '--render-engine', 'ogre',  # Set the rendering engine to Ogre
+            '--render-engine', 'ogre2',  # Set the rendering engine to Ogre
             '-v', '4'  # Set verbosity level to 4 for more detailed logs
         ],
         shell=True
@@ -49,6 +49,6 @@ def generate_launch_description():
     return launch.LaunchDescription([
         ign_gazebo_world,
         cam_topic_bridge,
-        rviz_node,
+        # rviz_node,
         # controller_node  # Uncomment and configure if you want to launch a controller node
     ])
