@@ -5,7 +5,7 @@ import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.node import Node
 from inverse_kinematics_interfaces.action import Posegoal
-from inverse_kinematics_interfaces.msg import JointAngles
+from std_msgs.msg import Float64
 from geometry_msgs.msg import Pose
 import numpy as np
 import sympy as sp
@@ -14,13 +14,14 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.executors import MultiThreadedExecutor
 import math
 from multiprocessing import Pool
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 class UB100:
     LINK_LENGTHS = [0, 0.73731, 0.3878, 0, 0, 0]  # a_i
-    LINK_TWISTS = [sp.pi / 2, 0, 0, sp.pi / 2, sp.pi / 2, sp.pi / 2]  # alpha_i
-    LINK_OFFSETS = [0.1833, -0.1723, 0.1723, -0.0955, 0.1155, -0.045]  # d_i
+    LINK_TWISTS = [float(sp.pi / 2), 0, 0, float(sp.pi / 2), float(sp.pi / 2), float(sp.pi / 2)]  # alpha_i
+    LINK_OFFSETS = [0.760, 0.0, 0.0, 0.850, 0.760, 0.15878]  # d_i
 
     JOINT_ANGLES_INITIAL = [
         0.0001,
@@ -107,6 +108,7 @@ class UB100:
         # p5 = sp.diff(jacobian_, self.theta[4])
         # p6 = sp.diff(jacobian_, self.theta[5])
 
+
         args_list = [(jacobian_, theta_i) for theta_i in self.theta]
 
         with Pool() as pool:
@@ -160,21 +162,14 @@ class UB100:
         self.P_X_Y_Z_0 = self.T_0_6[:-1, -1]
 
     # This function generates straight line trajectory in 3D space. There could be some cases where trajectory passes through the robot which should be handled somehow
-    def generate_trajectory(self, point_a, point_b: Pose):
-        fig = plt.figure(1, (12, 8))
-        subplot = fig.add_subplot(2, 2, 1,projection='3d')
-        fig.suptitle("Trajectory and Kinematic Analysis of UR3 Robot", fontsize=16)
-        plt.ion()
-        subplot.set_xlabel("X")
-        subplot.set_ylabel("Y")
-        subplot.set_zlabel("Z")
-        subplot.set_title("3D trajectory of Robot end-effector")
-        subplot.grid(True)
+    def generate_trajectory(self, point_a: Pose, point_b: Posegoal.Goal):
+
+        print(f"Start point: x={point_a.position.x}, y={point_a.position.y}, z={point_a.position.z}")
+        print(f"Desired point: x={point_b.pose.position.x}, y={point_b.pose.position.y}, z={point_b.pose.position.z}")
 
 
         rot = self.quaternion_rotation_matrix(point_a.orientation)
         rot = np.vstack((rot, np.array([0, 0, 0])))
-
         T_0_E = np.hstack((rot, np.array([[point_a.position.x], [point_a.position.y], [point_a.position.z], [1]])))
 
         distance = math.sqrt(
@@ -190,27 +185,35 @@ class UB100:
         points = []
         # TODO verify traj generation
         for t in time:
-            x = point_a.position.x + point_b.pose.position.x * t / total_time
-            y = point_a.position.y + point_b.pose.position.y * t / total_time
-            z = point_a.position.z + point_b.pose.position.z * t / total_time
+            x = point_a.position.x + (point_b.pose.position.x - point_a.position.x) * t / total_time
+            y = point_a.position.y + (point_b.pose.position.y - point_a.position.y) * t / total_time
+            z = point_a.position.z + (point_b.pose.position.z - point_a.position.z) * t / total_time
 
             local_xy = np.array([x, y, z, 1.0])
 
-            points.append(np.dot(T_0_E, local_xy))
+            # points.append(np.dot(T_0_E, local_xy))
+            points.append(local_xy)
 
-        # points.append(np.array([point_a.position.x, point_a.position.y, point_a.position.z, 1.0]))
-        # points.append(np.array([point_b.pose.position.x, point_b.pose.position.y, point_b.pose.position.z, 1.0]))
+        xx = []
+        yy = []
+        zz = []
         for pen in points:
-            subplot.scatter(pen[0],pen[1], pen[2], color="blue")
+            xx.append(float(pen[0]))
+            yy.append(float(pen[1]))
+            zz.append(float(pen[2]))
 
-        plt.show()
+        fig = go.Figure(data=[go.Scatter3d(x=np.array(xx), y=np.array(yy), z=np.array(zz), mode='markers')])
+
+        fig.show()
+
         return np.vstack(points)
 
     # This functions generates joint angles to be published
-    def get_trajectory_ik(self, current_EE_pose: Pose, desired_EE_pose: Pose):
+    def get_trajectory_ik(self, current_EE_pose: Pose, desired_EE_pose: Posegoal.Goal):
         joint_angles = []
         traj = self.generate_trajectory(current_EE_pose, desired_EE_pose)
-        #         find current joint angles either by doing ik of current pose or save last joint angles.
+
+        #find current joint angles either by doing ik of current pose or save last joint angles.
         joint_angles_current = sp.Matrix(self.LAST_ANGLES)
 
         for i in range(traj.shape[0]):
@@ -227,8 +230,10 @@ class UB100:
                 new_end_effector_velocities, joint_angles_current
             )
 
-            joint_angles_current = joint_angles_current + joint_angular_velocities * self.dt_calculated
             joint_angles.append(joint_angles_current)
+
+            # normalize all angles from -3.14 to 3.14
+            joint_angles_current = joint_angles_current + joint_angular_velocities * self.dt_calculated
 
         self.LAST_ANGLES = joint_angles[-1]
 
@@ -282,6 +287,15 @@ class InverseKinematics(Node):
     def __init__(self):
         """Constructor"""
         super().__init__("inverse_kinematics")
+        self.action_server = None
+        self.publisher_findger_left = None
+        self.publisher_joint_4 = None
+        self.publisher_joint_6 = None
+        self.publisher_joint_5 = None
+        self.publisher_joint_3 = None
+        self.publisher_joint_2 = None
+        self.publisher_joint_1 = None
+        self.publisher_finger_right = None
         self.subscriber = None
         self.publisher = None
         self.currentPose = None
@@ -303,11 +317,40 @@ class InverseKinematics(Node):
         self.get_logger().info(f"Subscribed to '{self.subscriber.topic_name}'")
 
         # publisher for publishing outgoing messages
-        self.publisher = self.create_publisher(JointAngles,
-                                               "/joint_angles",
+        self.publisher_joint_1 = self.create_publisher(Float64,
+                                               "/joint_angles/joint1",
                                                qos_profile=10)
-        self.get_logger().info(f"Publishing to '{self.publisher.topic_name}'")
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_1.topic_name}'")
 
+        # publisher for publishing outgoing messages
+        self.publisher_joint_2 = self.create_publisher(Float64,
+                                               "/joint_angles/joint2",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_2.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_joint_3 = self.create_publisher(Float64,
+                                               "/joint_angles/joint3",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_3.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_joint_4 = self.create_publisher(Float64,
+                                               "/joint_angles/joint4",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_4.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_joint_5 = self.create_publisher(Float64,
+                                               "/joint_angles/joint5",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_5.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_joint_6 = self.create_publisher(Float64,
+                                               "/joint_angles/joint6",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_joint_6.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_findger_left = self.create_publisher(Float64,
+                                               "/joint_angles/gripper_left_joint",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_findger_left.topic_name}'")        # publisher for publishing outgoing messages
+        self.publisher_finger_right = self.create_publisher(Float64,
+                                               "/joint_angles/ripper_right_joint",
+                                               qos_profile=10)
+        self.get_logger().info(f"Publishing to '{self.publisher_finger_right.topic_name}'")
         # action server for handling action goal requests
         self.action_server = ActionServer(
             self,
@@ -333,15 +376,16 @@ class InverseKinematics(Node):
         self.get_logger().info(
             f"Checking point: x={goalPose.pose.position.x}, y={goalPose.pose.position.y}, z={goalPose.pose.position.z}")
 
+        max_reach = sum(self.robot.LINK_LENGTHS) + sum(self.robot.LINK_OFFSETS)
+
         # Calculate distance to the point
         point_position = np.array([goalPose.pose.position.x, goalPose.pose.position.y, goalPose.pose.position.z])
-        max_reach = 0.6
         distance_to_point = np.linalg.norm(point_position)
 
         self.get_logger().info(f"Distance to point: {distance_to_point}, Max reach: {max_reach}")
 
         # Check if the distance is within the manipulator's reach
-        if distance_to_point > max_reach:
+        if distance_to_point >= max_reach or goalPose.pose.position.z < 0:
             self.get_logger().warn("Point is outside the reachable workspace.")
             return False
 
@@ -370,7 +414,6 @@ class InverseKinematics(Node):
             return GoalResponse.REJECT
 
     def actionHandleCancel(self, goal: Posegoal.Goal) -> CancelResponse:
-        # TODO bring robot to home 0,0,00,0,0,0 when cancel is called
         """Processes action cancel requests
 
         Args:
@@ -408,18 +451,44 @@ class InverseKinematics(Node):
         # create the action feedback and result
         feedback = Posegoal.Feedback()
         result = Posegoal.Result()
-        pub_joint_angle = JointAngles()
-        # do fk with joint angles
-        # wait for current position to be equal to
+        joint_angle = Float64()
 
         self.get_logger().info("Executing action goal")
         angles = self.robot.get_trajectory_ik(self.currentPose, goal.request)
 
+        xx = []
+        yy = []
+        zz = []
+
+
+        # verification
+        for angle in angles:
+            pose  = self.robot.get_end_effector_positions_fk([float(angle[0]), float(angle[1]), float(angle[2]), float(angle[3]), float(angle[4]), float(angle[5])])
+            xx.append(float(pose[0]))
+            yy.append(float(pose[1]))
+            zz.append(float(pose[2]))
+
+        fig = go.Figure(data=[go.Scatter3d(x=np.array(xx), y=np.array(yy), z=np.array(zz), mode='markers')])
+
+        fig.show()
+
         for a in angles:
             #  pick one angle , publish it and wait for robot EE to reach that position, publish another and repeat
             feedback.next_joint_angles = [float(a[0]), float(a[1]), float(a[2]), float(a[3]), float(a[4]), float(a[5])]
-            pub_joint_angle.joint_angles = feedback.next_joint_angles
-            self.publisher.publish(pub_joint_angle)
+
+            joint_angle.data = float(a[0])
+            self.publisher_joint_1.publish(joint_angle)
+            joint_angle.data = float(a[1])
+            self.publisher_joint_2.publish(joint_angle)
+            joint_angle.data = float(a[2])
+            self.publisher_joint_3.publish(joint_angle)
+            joint_angle.data = float(a[3])
+            self.publisher_joint_4.publish(joint_angle)
+            joint_angle.data = float(a[4])
+            self.publisher_joint_5.publish(joint_angle)
+            joint_angle.data = float(a[5])
+            self.publisher_joint_6.publish(joint_angle)
+
             goal.publish_feedback(feedback)
 
             approx_EE_fk = self.robot.get_end_effector_positions_fk(
@@ -433,7 +502,6 @@ class InverseKinematics(Node):
                 if self.cancel_request:
                     self.get_logger().warn("Cancel request , Stopping arm")
                     result.success = True
-                    # feedback.next_joint_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                     goal.succeed()
                     self.server_busy = False
                     self.cancel_request = False
@@ -450,7 +518,6 @@ class InverseKinematics(Node):
         # finish when EE is in vicinity of past goal index
         if rclpy.ok():
             result.success = True
-            # feedback.next_joint_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             goal.succeed()
             self.server_busy = False
             self.get_logger().info("Goal succeeded")
