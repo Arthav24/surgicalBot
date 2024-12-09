@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>end_effector_plugin</name>
+  <version>0.0.1</version>
+  <description>End effector plugin for surgical bot.</description>
+  <maintainer email="nerlekar@umd.edu">Varad Nerlekar</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>gazebo_ros</depend>
+  <depend>gazebo</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
