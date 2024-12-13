@@ -4,52 +4,56 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch.actions import ExecuteProcess
 from launch_ros.actions import Node
-
+from ament_index_python.packages import get_package_share_directory
+from launch.actions import IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     # Set the environment variable for Ignition Gazebo resources
     os.environ["IGN_GAZEBO_RESOURCE_PATH"] = os.path.join(
         FindPackageShare('surgicalBot').find("surgical_tools_sorter"), 'models')
 
-    # Launch Ignition Gazebo with the specified world
-    ign_gazebo_world = ExecuteProcess(
-        cmd=[
-            'ign', 'gazebo',  # Change this line
-            PathJoinSubstitution([
-                FindPackageShare('surgical_tools_sorter'),
-                'worlds',
-                'just_arm.sdf'
-            ]),
-            '--render-engine', 'ogre2',  # Set the rendering engine to Ogre
-            '-v', '4'  # Set verbosity level to 4 for more detailed logs
-        ],
-        shell=True
+
+    pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
+    gz_sim = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
+        launch_arguments={'gz_args': PathJoinSubstitution([
+            get_package_share_directory('surgical_tools_sorter'),
+            'worlds',
+            'just_arm.sdf'
+        ])}.items(),
     )
 
-    # Launch the ROS 2 to Ignition bridge for the camera topic
-    cam_topic_bridge = Node(
-        package='ros_ign_bridge',
+    bridge = Node(
+        package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image'],
+        parameters=[{
+            'config_file': os.path.join(get_package_share_directory('surgical_tools_sorter'), 'config', 'bridge.yaml'),
+            'qos_overrides./tf_static.publisher.durability': 'transient_local',
+        }],
+        output='screen'
     )
-    
-    # Launch the ROS 2 to Ignition bridge for joint angles
-    joint_angle_bridges = [
-        Node(
-            package='ros_ign_bridge',
-            executable='parameter_bridge',
-            arguments=[f'/joint_angles/joint{i}@std_msgs/msg/Float64@ignition.msgs.Double']  # Adjust message types as needed
-        ) for i in range(1, 7)
-    ] + [
-        Node(
-            package='ros_ign_bridge',
-            executable='parameter_bridge',
-            arguments=[f'/joint_angles/gripper_{side}_joint@std_msgs/msg/Float64@ignition.msgs.Double']
-        ) for side in ['left', 'right']
-    ]
+    sdf_file = os.path.join( get_package_share_directory('surgical_tools_sorter'),
+                            'models','robot_arm',
+                            'eb100.sdf')
+
+    with open(sdf_file, 'r') as infp:
+        robot_desc = infp.read()
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='both',
+        parameters=[
+            {'use_sim_time': True},
+            {'robot_description': robot_desc},
+        ]
+    )
 
     # Return the launch description with all actions
     return launch.LaunchDescription([
-        ign_gazebo_world,
-        cam_topic_bridge,
-        *joint_angle_bridges,
+        gz_sim,
+        bridge,
+        robot_state_publisher
     ])
