@@ -5,10 +5,15 @@
         <link name="link">
             <collision name="collision">
                 <pose>0 0 0.001 0 0 0</pose>
-                <geometry>
+                <!-- <geometry>
                     <mesh>
                         <uri>meshes/o_scalpel_v2.obj</uri>
                     </mesh>
+                </geometry> -->
+                <geometry>
+                    <box>
+                        <size>0.14113 0.012 0.004</size>
+                    </box>
                 </geometry>
             </collision>
             <visual name="visual">

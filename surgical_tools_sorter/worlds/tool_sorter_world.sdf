@@ -13,7 +13,7 @@
                     <iters>10</iters> <!-- Reduce the number of iterations -->
                 </solver>
                 <constraints>
-                    <cfm>0.5</cfm> <!-- Increase constraint force mixing -->
+                    <cfm>0.7</cfm> <!-- Increase constraint force mixing -->
                     <erp>0.1</erp> <!-- Reduce error reduction parameter -->
                 </constraints>
             </ode>
@@ -256,14 +256,14 @@
             <uri>
                 ../models/syringe/syringe.sdf
             </uri>
-            <pose>0.140 0.380 0.635 1.5708 1.5708 0</pose>
+            <pose>0.140 0.380 0.645 1.5708 1.5708 0</pose>
         </include>
         <include>
             <name>syringe2</name>
             <uri>
                 ../models/syringe/syringe.sdf
             </uri>
-            <pose>0.200 0.380 0.635 1.5708 1.5708 0</pose>
+            <pose>0.200 0.380 0.645 1.5708 1.5708 0</pose>
         </include>
 
         <!-- Vaccine Bottle x 3 -->
@@ -272,21 +272,21 @@
             <uri>
                 ../models/vaccine_bottle/propofol.sdf
             </uri>
-            <pose>0.060 0.380 0.635 0 0 1.5708</pose>
+            <pose>0.060 0.380 0.645 0 0 1.5708</pose>
         </include>
         <include>
             <name>vaccine2</name>
             <uri>
                 ../models/vaccine_bottle/ibuprofen.sdf
             </uri>
-            <pose>0 0.380 0.635 0 0 1.5708</pose>
+            <pose>0 0.380 0.645 0 0 1.5708</pose>
         </include>
         <include>
             <name>vaccine3</name>
             <uri>
                 ../models/vaccine_bottle/ibuprofen.sdf
             </uri>
-            <pose>-0.060 0.380 0.635 0 0 1.5708</pose>
+            <pose>-0.060 0.380 0.645 0 0 1.5708</pose>
         </include>
 
         <!-- Scalpel x 2 -->

@@ -5,10 +5,15 @@
         <link name="link">
             <collision name="collision">
                 <pose>0 0 0.001 1.5708 0 1.5708</pose>
-                <geometry>
+                <!-- <geometry>
                     <mesh>
                         <uri>meshes/o_tweezers_part_v3.obj</uri>
                     </mesh>
+                </geometry> -->
+                <geometry>
+                    <box>
+                        <size>0.15 0.022 0.01289</size>
+                    </box>
                 </geometry>
             </collision>
             <visual name="visual">

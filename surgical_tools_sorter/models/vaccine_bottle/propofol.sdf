@@ -5,10 +5,15 @@
         <link name="link">
             <collision name="collision">
                 <pose>0 0 0.001 0 0 -1.5708</pose>
-                <geometry>
+                <!-- <geometry>
                     <mesh>
                         <uri>meshes/o_propofol.obj</uri>
                     </mesh>
+                </geometry> -->
+                <geometry>
+                    <box>
+                        <size>0.0244 0.05378 0.02439</size>
+                    </box>
                 </geometry>
             </collision>
             <visual name="visual">

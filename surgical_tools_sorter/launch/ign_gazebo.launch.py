@@ -17,7 +17,7 @@ def generate_launch_description():
             PathJoinSubstitution([
                 FindPackageShare('surgical_tools_sorter'),
                 'worlds',
-                'just_arm.sdf'
+                'tool_sorter_world.sdf'
             ]),
             '--render-engine', 'ogre2',  # Set the rendering engine to Ogre
             '-v', '4'  # Set verbosity level to 4 for more detailed logs
