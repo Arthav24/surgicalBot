@@ -10,7 +10,6 @@ class JointPublisher(Node):
 
     def __init__(self):
         """Constructor"""
-
         super().__init__("joint_publisher")
 
         self.subscriber = None
@@ -20,64 +19,54 @@ class JointPublisher(Node):
         time.sleep(5)
 
 
-        self.move1()
+        self.scissors_pick_up()
         time.sleep(5)
 
 
-        print("M10")
-        self.movegc()
+        self.gripper_close()
         time.sleep(5)
 
-
-        print("M2")
-
-        self.move2()
-        time.sleep(5)
-        print("M3")
-
-        self.move3()
-        time.sleep(5)
-        print("Mgo")
-        self.movego()
+        self.scissors_lift_up()
         time.sleep(5)
 
+        self.scissors_place()
+        time.sleep(5)
+        
+        self.gripper_open()
+        time.sleep(5)
 
-
-        print("M4")
-        self.move4()
+        self.syringe_pick_up()
         time.sleep(5)
-        print("Mgc")
-        self.movegc()
+        
+        self.gripper_close()
         time.sleep(5)
-        print("M5")
-        self.move5()
+        
+        self.syringe_lift_up()
         time.sleep(5)
-        print("M6")
-        self.move6()
+        
+        self.syringe_place()
         time.sleep(5)
-        print("Mgo")
-        self.movego()
+        
+        self.gripper_open()
         time.sleep(5)
-        print("M7")
-        self.move7()
+        
+        self.bottle_pick_up()
         time.sleep(5)
-        print("Mgc")
-        self.movegc()
+        
+        self.gripper_close()
         time.sleep(5)
-        print("M8")
-        self.move8()
-
+        
+        self.bottle_lift_up()
         time.sleep(5)
-        print("M9")
-        self.move9()
+        
+        self.bottle_place()
         time.sleep(5)
-        print("Mgo")
-        self.movego()
+        
+        self.gripper_open()
         time.sleep(5)
-        print("home")
+        
         self.home()
         time.sleep(5)
-        print("done")
 
     def setup(self):
         """Sets up subscribers, publishers, etc. to configure the node"""
@@ -119,7 +108,7 @@ class JointPublisher(Node):
         j6 = Float64()
         j7 = Float64()
         j8 = Float64()
-        x =  [ 0.00, 0.00]
+        
         j1.data = 0.0
         j2.data = 0.0
         j3.data = 0.0
@@ -128,15 +117,18 @@ class JointPublisher(Node):
         j6.data = 0.0
         j7.data = 0.0
         j8.data = 0.0
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
+        self.publisher6.publish(j7)
+        self.publisher6.publish(j8)
 
 
-    def move1(self):
+    def scissors_pick_up(self):
         print("Moving Scissors to Pick Position")
         j1 = Float64()
         j2 = Float64()
@@ -146,7 +138,9 @@ class JointPublisher(Node):
         j6 = Float64()
         j7 = Float64()
         j8 = Float64()
-        x =  [0.20, 0.49, 1.28, 0.05, 1.56, 0.96, 0.00, 0.00]
+        
+        x =  [2.72, 0.49, 1.28, 0.05, 1.56, 0.96, 0.00, 0.00]
+        
         j1.data = x[0]
         j2.data = x[1]
         j3.data = x[2]
@@ -161,11 +155,9 @@ class JointPublisher(Node):
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
 
-    def move2(self):
+    def scissors_lift_up(self):
         print("Moving Scissors Lift Up")
         j1 = Float64()
         j2 = Float64()
@@ -175,7 +167,9 @@ class JointPublisher(Node):
         j6 = Float64()
         j7 = Float64()
         j8 = Float64()
-        x =  [0.20, 0.25, 1.28, 0.05, 1.56, 0.96, 0.00, 0.00]
+        
+        x =  [2.72, 0.25, 1.28, 0.05, 1.56, 0.96, 0.00, 0.00]
+        
         j1.data = x[0]
         j2.data = x[1]
         j3.data = x[2]
@@ -190,12 +184,8 @@ class JointPublisher(Node):
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
-
-
-    def move3(self):
+    def scissors_place(self):
         print("Moving Scissors to Place Position")
         j1 = Float64()
         j2 = Float64()
@@ -203,27 +193,22 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [2.53, 0.49, 1.28, 0.05, 1.60 ,0.79, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+                
+        j1.data = 0.09
+        j2.data = 0.49
+        j3.data = 1.22
+        j4.data = 0.19
+        j5.data = 1.56
+        j6.data = 1.26
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
-    def move4(self):
+    def syringe_pick_up(self):
         print("Moving Syringe to Pick Position")
         j1 = Float64()
         j2 = Float64()
@@ -231,27 +216,22 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [1.78, 0.49, 1.30, 0.06, 16.62, 1.87, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = 0.94
+        j2.data = 0.49
+        j3.data = 1.22
+        j4.data = 0.19
+        j5.data = 1.56
+        j6.data = 1.84
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
-    def move5(self):
+    def syringe_lift_up(self):
         print("Moving Syringe to Lift up Position")
         j1 = Float64()
         j2 = Float64()
@@ -259,29 +239,22 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [1.78, 0.25, 1.30, 0.06, 16.62, 1.87, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = 0.94
+        j2.data = 0.39
+        j3.data = 1.22
+        j4.data = 0.19
+        j5.data = 1.56
+        j6.data = 1.84
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
-
-
-    def move6(self):
+    def syringe_place(self):
         print("Moving Syringe to Place Position")
         j1 = Float64()
         j2 = Float64()
@@ -289,28 +262,22 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [1.39, 0.49, 1.28, 0.06, 1.60, 1.87, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = -2.16
+        j2.data = 0.62
+        j3.data = 1.13
+        j4.data = 0.19
+        j5.data = 1.62
+        j6.data = 2.34
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
-
-    def move7(self):
+    def bottle_pick_up(self):
         print( "Moving Bottle to Pick Position")
         j1 = Float64()
         j2 = Float64()
@@ -318,28 +285,23 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [1.65 ,0.49 ,1.28, 0.05, 1.61, 1.58, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = 1.38
+        j2.data = 0.43
+        j3.data = 1.38
+        j4.data = 0.20
+        j5.data = 1.56
+        j6.data = 1.52
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
 
 
-    def move8(self):
+    def bottle_lift_up(self):
         print( "Moving Bottle to lift up Position")
         j1 = Float64()
         j2 = Float64()
@@ -347,26 +309,22 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x =  [1.65 ,0.25, 1.28, 0.05, 1.61, 1.58, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = 1.38
+        j2.data = 0.36
+        j3.data = 1.38
+        j4.data = 0.20
+        j5.data = 1.76
+        j6.data = 1.52
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
-    def move9(self):
+        
+    def bottle_place(self):
         print("Moving Bottle to Place Position")
         j1 = Float64()
         j2 = Float64()
@@ -374,82 +332,43 @@ class JointPublisher(Node):
         j4 = Float64()
         j5 = Float64()
         j6 = Float64()
-        j7 = Float64()
-        j8 = Float64()
-        x = [1.73, 0.49, 1.28, 0.05, 1.60, 1.46, 0.00 ,0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
+        
+        j1.data = -1.53
+        j2.data = 0.46
+        j3.data = 1.38
+        j4.data = 0.20
+        j5.data = 1.76
+        j6.data = 1.52
+        
         self.publisher1.publish(j1)
         self.publisher2.publish(j2)
         self.publisher3.publish(j3)
         self.publisher4.publish(j4)
         self.publisher5.publish(j5)
         self.publisher6.publish(j6)
-        # self.publisher7.publish(j7)
-        # self.publisher8.publish(j8)
+        
 
-    def movego(self):
-        j1 = Float64()
-        j2 = Float64()
-        j3 = Float64()
-        j4 = Float64()
-        j5 = Float64()
-        j6 = Float64()
+    def gripper_open(self):
+        print("Gripper Open")
         j7 = Float64()
         j8 = Float64()
-        x =  [1.73, 0.49, 1.28, 0.05, 1.60, 1.46, 0.00, 0.00]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
-        # self.publisher1.publish(j1)
-        # self.publisher2.publish(j2)
-        # self.publisher3.publish(j3)
-        # self.publisher4.publish(j4)
-        # self.publisher5.publish(j5)
-        # self.publisher6.publish(j6)
+        
+        j7.data = 0.0
+        j8.data = 0.0
+        
         self.publisher7.publish(j7)
         self.publisher8.publish(j8)
-    def movegc(self):
-        j1 = Float64()
-        j2 = Float64()
-        j3 = Float64()
-        j4 = Float64()
-        j5 = Float64()
-        j6 = Float64()
+        
+    def gripper_close(self):
+        print("Gripper Close")
         j7 = Float64()
         j8 = Float64()
-        x =  [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, -0.038, 0.038]
-        j1.data = x[0]
-        j2.data = x[1]
-        j3.data = x[2]
-        j4.data = x[3]
-        j5.data = x[4]
-        j6.data = x[5]
-        j7.data = x[6]
-        j8.data = x[7]
-        # self.publisher1.publish(j1)
-        # self.publisher2.publish(j2)
-        # self.publisher3.publish(j3)
-        # self.publisher4.publish(j4)
-        # self.publisher5.publish(j5)
-        # self.publisher6.publish(j6)
+        
+        j7.data = -0.038
+        j8.data = 0.038
+        
         self.publisher7.publish(j7)
         self.publisher8.publish(j8)
-
-
-
-
 
 
 def main():
